@@ -11,6 +11,7 @@ dependencies:
   firebase_core: ^3.15.1
   firebase_auth: ^5.6.2
   cloud_firestore: ^5.6.11
+  http: ^1.2.1
 
   # Puedes agregar más dependencias aquí si las necesitas,
   # pero deben ser compatibles con Dart 3.8.0
