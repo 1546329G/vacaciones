@@ -1,6 +1,24 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Para leer el rol
 
-void main() {
+// Este archivo firebase_options.dart debe estar en la misma carpeta 'lib' que main.dart
+import 'firebase_options.dart';
+
+// Importa las pantallas usando la ruta del paquete (es la forma correcta)
+import 'package:my_first_app/screens/cliente_auth_screen.dart';
+import 'package:my_first_app/screens/cliente_dashboard_screen.dart';
+import 'package:my_first_app/screens/establecimiento_auth_screen.dart';
+import 'package:my_first_app/screens/establecimiento_dashboard_screen.dart';
+
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -10,277 +28,151 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TuComidaYa - Portal de Establecimientos',
+      title: 'TuComidaYa',
       theme: ThemeData(
-        primarySwatch: Colors.teal, // Un color diferente para el portal de establecimientos
+        primarySwatch: Colors.teal,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      // La pantalla inicial será el Login/Registro de Establecimiento
-      home: const EstablecimientoAuthScreen(),
-      // Aquí puedes añadir rutas si el portal web tiene múltiples páginas
+      // Usamos StreamBuilder para manejar el estado de autenticación
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData) {
+            // Usuario logueado. Intentar determinar su rol.
+            final user = snapshot.data!;
+            return FutureBuilder<DocumentSnapshot>(
+              future: _getUserRole(user.uid),
+              builder: (context, roleSnapshot) {
+                if (roleSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
+                  String? role = roleSnapshot.data!['rol'];
+                  if (role == 'establecimiento') {
+                    return const EstablecimientoDashboardScreen();
+                  } else if (role == 'cliente') {
+                    return const ClienteDashboardScreen();
+                  }
+                  // Si no se encuentra un rol válido, o es un rol desconocido
+                  return const RoleSelectionScreen();
+                }
+                // Si el documento de usuario no existe en Firestore después de autenticación
+                // Esto podría significar un usuario antiguo sin rol guardado, o un error.
+                // En este caso, podemos pedirle que seleccione su rol o lo mandamos a una pantalla de error.
+                // Por ahora, lo mandaremos a la selección de rol.
+                return const RoleSelectionScreen();
+              },
+            );
+          }
+          // No hay usuario logueado, mostrar la pantalla de selección de rol
+          return const RoleSelectionScreen();
+        },
+      ),
       routes: {
+        // Rutas para las pantallas de autenticación
+        '/establecimientoAuth': (context) => const EstablecimientoAuthScreen(),
+        '/clienteAuth': (context) => const ClienteAuthScreen(),
+        // Rutas para los dashboards
         '/establecimientoDashboard': (context) => const EstablecimientoDashboardScreen(),
-        // '/establecimientoRegistro': (context) => const EstablecimientoRegistroScreen(), // Si quieres una pantalla de registro separada
+        '/clienteDashboard': (context) => const ClienteDashboardScreen(),
       },
     );
   }
-}
 
-// ====================================================================
-// PANTALLA DE AUTENTICACIÓN (LOGIN/REGISTRO) PARA ESTABLECIMIENTOS
-// ====================================================================
-class EstablecimientoAuthScreen extends StatefulWidget {
-  const EstablecimientoAuthScreen({super.key});
-
-  @override
-  State<EstablecimientoAuthScreen> createState() => _EstablecimientoAuthScreenState();
-}
-
-class _EstablecimientoAuthScreenState extends State<EstablecimientoAuthScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _isLoginMode = true; // true para login, false para registro
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  void _submitAuthForm() {
-    if (_formKey.currentState!.validate()) {
-      // Aquí iría la lógica real de autenticación/registro
-      if (_isLoginMode) {
-        // Lógica de Inicio de Sesión
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Iniciando sesión como Establecimiento con: ${_emailController.text}'),
-          ),
-        );
-        // Navegar al dashboard del establecimiento
-        Navigator.pushReplacementNamed(context, '/establecimientoDashboard');
-      } else {
-        // Lógica de Registro
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Registrando nuevo Establecimiento con: ${_emailController.text}'),
-          ),
-        );
-        // Podrías navegar al dashboard o a una pantalla de confirmación
-        Navigator.pushReplacementNamed(context, '/establecimientoDashboard');
-      }
+  // Función auxiliar para obtener el rol del usuario desde Firestore
+  Future<DocumentSnapshot> _getUserRole(String uid) async {
+    // Primero, intenta en la colección 'establecimientos'
+    DocumentSnapshot doc = await FirebaseFirestore.instance.collection('establecimientos').doc(uid).get();
+    if (doc.exists) {
+      return doc;
     }
+    // Si no está en 'establecimientos', intenta en la colección 'clientes'
+    doc = await FirebaseFirestore.instance.collection('clientes').doc(uid).get();
+    if (doc.exists) {
+      return doc;
+    }
+    // Puedes añadir más roles aquí (repartidores, admin)
+    // Si no se encuentra en ninguna, retorna un documento que no existe.
+    return FirebaseFirestore.instance.collection('temp_roles').doc('non_existent').get();
   }
+}
+
+// Pantalla para que el usuario elija su rol inicial si no está logueado o no tiene rol definido
+class RoleSelectionScreen extends StatelessWidget {
+  const RoleSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Para la web, podemos hacer un layout más adaptable
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isLoginMode ? 'Acceso de Establecimientos' : 'Registro de Establecimientos'),
-        backgroundColor: Colors.teal,
+        title: const Text('Bienvenido a PideYa'),
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
       body: Center(
-        child: SingleChildScrollView( // Permite scroll si el contenido es grande en pantallas pequeñas
-          padding: const EdgeInsets.all(20.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500), // Limita el ancho del formulario en pantallas grandes
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min, // La columna ocupa solo el espacio necesario
-                children: <Widget>[
-                  Icon(
-                    _isLoginMode ? Icons.store : Icons.app_registration,
-                    size: 80,
-                    color: Colors.teal,
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    _isLoginMode ? 'Inicia Sesión' : 'Crea tu Cuenta de Establecimiento',
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.teal),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 30),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email del Establecimiento',
-                      hintText: 'ejemplo@tutienda.com',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, ingresa tu email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Email no válido';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Contraseña',
-                      hintText: 'Mínimo 6 caracteres',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, ingresa tu contraseña';
-                      }
-                      if (value.length < 6) {
-                        return 'La contraseña debe tener al menos 6 caracteres';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: _submitAuthForm,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 55),
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 5,
-                    ),
-                    child: Text(
-                      _isLoginMode ? 'Iniciar Sesión' : 'Registrar Establecimiento',
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _isLoginMode = !_isLoginMode; // Cambia entre login y registro
-                      });
-                    },
-                    child: Text(
-                      _isLoginMode
-                          ? '¿No tienes cuenta? Regístrate aquí'
-                          : '¿Ya tienes cuenta? Inicia Sesión',
-                      style: const TextStyle(color: Colors.teal, fontSize: 16),
-                    ),
-                  ),
-                  if (_isLoginMode) // Solo muestra la opción de recuperar contraseña en modo login
-                    TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Funcionalidad de Recuperar Contraseña (próximamente)')),
-                        );
-                        // TODO: Navegar a pantalla de recuperación de contraseña
-                      },
-                      child: const Text(
-                        '¿Olvidaste tu contraseña?',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    ),
-                ],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            const Text(
+              '¿Cómo deseas ingresar?',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(context, '/clienteAuth');
+              },
+              icon: const Icon(Icons.person),
+              label: const Text('Soy Cliente', style: TextStyle(fontSize: 20)),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(250, 60),
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ====================================================================
-// PANTALLA DE EJEMPLO PARA EL DASHBOARD DEL ESTABLECIMIENTO (Web)
-// ====================================================================
-class EstablecimientoDashboardScreen extends StatelessWidget {
-  const EstablecimientoDashboardScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard del Establecimiento'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // TODO: Lógica para cerrar sesión
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const EstablecimientoAuthScreen()),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sesión cerrada')),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              const Icon(Icons.dashboard, size: 120, color: Colors.teal),
-              const SizedBox(height: 30),
-              const Text(
-                '¡Bienvenido al Dashboard de tu Establecimiento!',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.teal),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Aquí gestionarás tus pedidos, menú, promociones y estadísticas.',
-                style: TextStyle(fontSize: 18),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Gestionar Menú (próximamente)')),
-                  );
-                  // TODO: Navegar a la sección de gestión de menú
-                },
-                icon: const Icon(Icons.menu_book),
-                label: const Text('Gestionar Menú', style: TextStyle(fontSize: 18)),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  backgroundColor: Colors.teal.shade700,
-                  foregroundColor: Colors.white,
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(context, '/establecimientoAuth');
+              },
+              icon: const Icon(Icons.store),
+              label: const Text('Soy Establecimiento', style: TextStyle(fontSize: 20)),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(250, 60),
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ver Pedidos (próximamente)')),
-                  );
-                  // TODO: Navegar a la sección de pedidos
-                },
-                icon: const Icon(Icons.receipt_long),
-                label: const Text('Ver Pedidos', style: TextStyle(fontSize: 18)),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  backgroundColor: Colors.teal.shade700,
-                  foregroundColor: Colors.white,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Login de Repartidores (próximamente)')),
+                );
+                // Navigator.pushNamed(context, '/repartidorAuth');
+              },
+              icon: const Icon(Icons.delivery_dining),
+              label: const Text('Soy Repartidor', style: TextStyle(fontSize: 20)),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(250, 60),
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
