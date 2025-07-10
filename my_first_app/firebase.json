@@ -38,7 +38,7 @@
   },
   "functions": [
     {
-      "source": "functions",
+      "source": "functions/api",
       "codebase": "default",
       "ignore": [
         "node_modules",
