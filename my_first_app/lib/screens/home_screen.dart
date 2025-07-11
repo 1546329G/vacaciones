@@ -14,7 +14,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PedidosYa Clone'), // Puedes personalizar el título
+        title: const Text('Pide YAAAAA   :)    '), // Puedes personalizar el título
         actions: [
           // ¡Aquí va el botón de la personita!
           IconButton(
@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 20),
                     const Text(
-                      'Te sugerimos',
+                      'cuando me vas a dar mi varco marino',
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),

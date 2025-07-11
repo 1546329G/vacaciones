@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_first_app/services/api_service.dart'; // Necesario para ApiService.init()
 import 'package:my_first_app/screens/home/login_screen.dart'; // Importa tu pantalla de login
-import 'package:my_first_app/screens/home/home_screen.dart'; // Importa tu pantalla principal
+import 'package:my_first_app/screens/home_screen.dart'; // Importa tu pantalla principal
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

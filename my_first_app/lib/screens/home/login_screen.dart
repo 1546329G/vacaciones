@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_first_app/services/api_service.dart';
-import 'package:my_first_app/screens/home/home_screen.dart'; // Para redirigir al home
+import 'package:my_first_app/screens/home_screen.dart'; // Para redirigir al home
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
