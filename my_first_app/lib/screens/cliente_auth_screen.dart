@@ -1,10 +1,19 @@
 // lib/screens/cliente_auth_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:my_first_app/services/api_service.dart';
+import 'package:my_first_app/models/user.dart';
+import 'package:my_first_app/screens/cliente_dashboard_screen.dart'; // <<< ¡MOVER AQUÍ!
+
+
+// !!! ELIMINA O COMENTA ESTAS LÍNEAS SI ESTÁN PRESENTES !!!
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class ClienteAuthScreen extends StatefulWidget {
-  const ClienteAuthScreen({super.key});
+  const ClienteAuthScreen({Key? key}) : super(key: key);
 
   @override
   State<ClienteAuthScreen> createState() => _ClienteAuthScreenState();
@@ -12,228 +21,176 @@ class ClienteAuthScreen extends StatefulWidget {
 
 class _ClienteAuthScreenState extends State<ClienteAuthScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nombreController = TextEditingController(); // Para el nombre en registro
-  final TextEditingController _apellidoController = TextEditingController(); // Para el apellido en registro
-  bool _isLoginMode = true;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _selectedRol; // Para el registro, si el rol se elige en esta pantalla
+  bool _isLogin = true; // Para alternar entre login y registro
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // !!! ELIMINA O COMENTA ESTA LÍNEA !!!
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
+
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _nombreController.dispose();
-    _apellidoController.dispose();
     super.dispose();
   }
 
-  void _submitAuthForm() async {
+  Future<void> _submitAuthForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    _formKey.currentState!.save();
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
     try {
-      if (_isLoginMode) {
-        // --- Lógica de INICIO DE SESIÓN ---
-        await _auth.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Inicio de sesión de cliente exitoso!')),
-        );
-        // La navegación la manejará el StreamBuilder en main.dart
-      } else {
-        // --- Lógica de REGISTRO ---
-        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
+      if (_isLogin) {
+        // --- LÓGICA DE LOGIN ---
+        // !!! ASEGÚRATE DE QUE ESTA ES LA LÍNEA QUE SE EJECUTA PARA EL LOGIN !!!
+        User loggedInUser = await ApiService().loginUser(email, password);
 
-        if (userCredential.user != null) {
-          await _firestore.collection('clientes').doc(userCredential.user!.uid).set({
-            'email': userCredential.user!.email,
-            'nombre': _nombreController.text.trim(),
-            'apellido': _apellidoController.text.trim(),
-            'telefono': null, // Se puede añadir más tarde
-            'fecha_registro': FieldValue.serverTimestamp(),
-            'activo': true,
-            'rol': 'cliente',
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registro de cliente exitoso! Cuenta creada y perfil guardado.')),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Inicio de sesión exitoso. ¡Bienvenido, ${loggedInUser.nombre ?? loggedInUser.email}!')),
+        );
+        // Navegar al dashboard después del login exitoso
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => ClienteDashboardScreen(currentUser: loggedInUser)),
           );
-          // La navegación la manejará el StreamBuilder en main.dart
         }
-      }
-    } on FirebaseAuthException catch (e) {
-      String message;
-      if (e.code == 'weak-password') {
-        message = 'La contraseña es demasiado débil.';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'El email ya está registrado para otra cuenta.';
-      } else if (e.code == 'user-not-found' || e.code == 'wrong-password') {
-        message = 'Credenciales inválidas. Verifica tu email y contraseña.';
+
       } else {
-        message = 'Ocurrió un error: ${e.message}';
+        // --- LÓGICA DE REGISTRO ---
+        if (_selectedRol == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Por favor, selecciona un rol.')),
+          );
+          return;
+        }
+        // !!! ASEGÚRATE DE QUE ESTA ES LA LÍNEA QUE SE EJECUTA PARA EL REGISTRO !!!
+        User newUser = await ApiService().registerUser(email, password, _selectedRol!);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registro exitoso para ${newUser.email}. Por favor, inicia sesión.')),
+        );
+        setState(() {
+          _isLogin = true; // Volver a la pantalla de login después del registro
+        });
+      }
+    }
+    // !!! CAMBIA EL TIPO DE EXCEPCIÓN A 'Exception' O UN TIPO MÁS ESPECÍFICO DE TU API !!!
+    on Exception catch (e) { // Captura cualquier tipo de excepción general
+      print('Error en la autenticación: $e');
+      String errorMessage = 'Ocurrió un error. Inténtalo de nuevo.';
+      if (e.toString().contains('Error al iniciar sesión')) {
+        errorMessage = 'Credenciales inválidas. Por favor, verifica tu email y contraseña.';
+      } else if (e.toString().contains('Error al registrar usuario')) {
+        errorMessage = 'El usuario ya existe o hubo un problema al registrar.';
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(content: Text(errorMessage)),
       );
-      print('Error de autenticación de cliente: ${e.code} - ${e.message}');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ocurrió un error inesperado: $e')),
-      );
-      print('Error inesperado al autenticar cliente: $e');
     }
+    // !!! ELIMINA ESTE BLOQUE 'on FirebaseAuthException' SI ESTÁ PRESENTE !!!
+    // on FirebaseAuthException catch (e) {
+    //   String message = 'Ocurrió un error de Firebase Auth.';
+    //   if (e.code == 'user-not-found') {
+    //     message = 'Usuario no encontrado.';
+    //   } else if (e.code == 'wrong-password') {
+    //     message = 'Contraseña incorrecta.';
+    //   } else if (e.code == 'email-already-in-use') {
+    //     message = 'El email ya está en uso.';
+    //   }
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(content: Text(message)),
+    //   );
+    // }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... (Tu código actual del build, con TextFormField para email, password, etc.)
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isLoginMode ? 'Acceso de Clientes' : 'Registro de Clientes'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
+        title: Text(_isLogin ? 'Iniciar Sesión' : 'Registrarse'),
       ),
       body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
+        child: Card(
+          margin: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(
-                    _isLoginMode ? Icons.person : Icons.person_add,
-                    size: 80,
-                    color: Colors.blueAccent,
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    _isLoginMode ? 'Inicia Sesión como Cliente' : 'Crea tu Cuenta de Cliente',
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 30),
+                children: [
                   TextFormField(
+                    key: const ValueKey('email'),
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'tu@email.com',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Correo electrónico'),
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, ingresa tu email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Email no válido';
+                      if (value == null || value.isEmpty || !value.contains('@')) {
+                        return 'Por favor, ingresa un correo electrónico válido.';
                       }
                       return null;
                     },
                   ),
-                  const SizedBox(height: 20),
                   TextFormField(
+                    key: const ValueKey('password'),
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Contraseña',
-                      hintText: 'Mínimo 6 caracteres',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Contraseña'),
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, ingresa tu contraseña';
-                      }
-                      if (value.length < 6) {
-                        return 'La contraseña debe tener al menos 6 caracteres';
+                      if (value == null || value.length < 6) {
+                        return 'La contraseña debe tener al menos 6 caracteres.';
                       }
                       return null;
                     },
                   ),
-                  if (!_isLoginMode) ...[ // Mostrar estos campos solo en modo registro
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _nombreController,
-                      keyboardType: TextInputType.name,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre',
-                        hintText: 'Tu nombre',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.badge),
-                      ),
+                  if (!_isLogin) // Campo de rol solo para registro
+                    DropdownButtonFormField<String>(
+                      value: _selectedRol,
+                      decoration: const InputDecoration(labelText: 'Rol'),
+                      items: const [
+                        DropdownMenuItem(value: 'cliente', child: Text('Cliente')),
+                        DropdownMenuItem(value: 'establecimiento', child: Text('Establecimiento')),
+                        DropdownMenuItem(value: 'repartidor', child: Text('Repartidor')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedRol = value;
+                        });
+                      },
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor, ingresa tu nombre';
+                        if (!_isLogin && value == null) {
+                          return 'Por favor, selecciona un rol.';
                         }
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _apellidoController,
-                      keyboardType: TextInputType.name,
-                      decoration: const InputDecoration(
-                        labelText: 'Apellido (Opcional)',
-                        hintText: 'Tu apellido',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.badge),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: _submitAuthForm,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 55),
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 5,
-                    ),
-                    child: Text(
-                      _isLoginMode ? 'Iniciar Sesión' : 'Registrar Cliente',
-                      style: const TextStyle(fontSize: 20),
-                    ),
+                    child: Text(_isLogin ? 'Iniciar Sesión' : 'Registrarse'),
                   ),
-                  const SizedBox(height: 20),
                   TextButton(
                     onPressed: () {
                       setState(() {
-                        _isLoginMode = !_isLoginMode;
+                        _isLogin = !_isLogin;
+                        _emailController.clear();
+                        _passwordController.clear();
+                        _selectedRol = null; // Limpiar rol al cambiar de modo
                       });
                     },
-                    child: Text(
-                      _isLoginMode
-                          ? '¿No tienes cuenta? Regístrate aquí'
-                          : '¿Ya tienes cuenta? Inicia Sesión',
-                      style: const TextStyle(color: Colors.blueAccent, fontSize: 16),
-                    ),
+                    child: Text(_isLogin
+                        ? 'Crear nueva cuenta'
+                        : 'Ya tengo una cuenta'),
                   ),
-                  if (_isLoginMode)
-                    TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Funcionalidad de Recuperar Contraseña (próximamente)')),
-                        );
-                      },
-                      child: const Text(
-                        '¿Olvidaste tu contraseña?',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -243,3 +200,4 @@ class _ClienteAuthScreenState extends State<ClienteAuthScreen> {
     );
   }
 }
+

@@ -12,6 +12,7 @@ dependencies:
   firebase_auth: ^5.6.2
   cloud_firestore: ^5.6.11
   http: ^1.2.1
+  shared_preferences: ^2.2.3 # <--- ¡AÑADE ESTA LÍNEA AQUÍ!
 
   # Puedes agregar más dependencias aquí si las necesitas,
   # pero deben ser compatibles con Dart 3.8.0
@@ -19,8 +20,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: 2.0.1  # Esta versión es compatible con Dart 3.8.0
+  flutter_lints: 2.0.1 
 
 flutter:
   uses-material-design: true
-
