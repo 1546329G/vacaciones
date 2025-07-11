@@ -7,8 +7,8 @@ import 'package:my_first_app/screens/home_screen.dart'; // Importa tu pantalla p
 
 // ¡Asegúrate de que estas rutas de importación sean correctas!
 // Basado en tu estructura actual, estos archivos deben estar directamente en lib/screens/
-import 'package:my_first_app/screens/cliente_dashboard_screen.dart'; 
-import 'package:my_first_app/screens/establecimiento_dashboard_screen.dart'; 
+import 'package:my_first_app/screens/cliente.dart'; 
+import 'package:my_first_app/screens/establecimiento.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

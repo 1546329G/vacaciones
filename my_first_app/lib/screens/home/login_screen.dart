@@ -3,9 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:my_first_app/services/api_service.dart';
 // ¡Importa tus dashboards aquí!
-import 'package:my_first_app/screens/cliente_dashboard_screen.dart';
-import 'package:my_first_app/screens/establecimiento_dashboard_screen.dart';
-// import 'package:my_first_app/screens/repartidor_dashboard_screen.dart'; // Si lo creas
+import 'package:my_first_app/screens/cliente.dart';
+import 'package:my_first_app/screens/establecimiento.dart';
+import 'package:my_first_app/screens/repartidor.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
