@@ -1,13 +1,17 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
-import 'package:my_first_app/services/api_service.dart'; // Necesario para ApiService.init()
+import 'package:my_first_app/services/api_service.dart';
 import 'package:my_first_app/screens/home/login_screen.dart'; // Importa tu pantalla de login
 import 'package:my_first_app/screens/home_screen.dart'; // Importa tu pantalla principal
 
+// ¡Asegúrate de que estas rutas de importación sean correctas!
+// Basado en tu estructura actual, estos archivos deben estar directamente en lib/screens/
+import 'package:my_first_app/screens/cliente_dashboard_screen.dart'; 
+import 'package:my_first_app/screens/establecimiento_dashboard_screen.dart'; 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Asegúrate de inicializar ApiService.
-  // Esto es bueno hacerlo al inicio para que el token esté cargado si es necesario
-  // en alguna otra parte de la app que se cargue de inmediato.
   await ApiService.init(); 
 
   runApp(const MyApp());
@@ -25,14 +29,14 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.orange,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      // La aplicación siempre comienza en la HomeScreen
-      home: const HomeScreen(), // <-- ¡CAMBIO CLAVE AQUÍ!
+      home: const HomeScreen(), 
       
-      // Define las rutas nombradas para fácil navegación
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
-        // Puedes añadir más rutas aquí si las necesitas
+        // ¡AGREGA ESTAS LÍNEAS PARA DEFINIR LAS RUTAS DE LOS DASHBOARDS!
+        '/clienteDashboard': (context) => const ClienteDashboardScreen(), // Define la ruta para el dashboard del cliente
+        '/establecimientoDashboard': (context) => const EstablecimientoDashboardScreen(), // Define la ruta para el dashboard del establecimiento
       },
     );
   }

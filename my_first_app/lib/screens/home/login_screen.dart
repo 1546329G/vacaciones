@@ -1,6 +1,11 @@
+// lib/screens/home/login_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:my_first_app/services/api_service.dart';
-import 'package:my_first_app/screens/home_screen.dart'; // Para redirigir al home
+// ¡Importa tus dashboards aquí!
+import 'package:my_first_app/screens/cliente_dashboard_screen.dart';
+import 'package:my_first_app/screens/establecimiento_dashboard_screen.dart';
+// import 'package:my_first_app/screens/repartidor_dashboard_screen.dart'; // Si lo creas
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,19 +17,18 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _rolController = TextEditingController(); // Para el rol en el registro
+  final TextEditingController _rolController = TextEditingController(); 
   final ApiService _apiService = ApiService();
 
   bool _isLoading = false;
   String? _errorMessage;
-  bool _isLoginMode = true; // Controla si estamos en modo Login o Registro
+  bool _isLoginMode = true;
 
-  // Función para alternar entre modos Login y Registro
   void _toggleMode() {
     setState(() {
       _isLoginMode = !_isLoginMode;
-      _errorMessage = null; // Limpiar mensaje de error al cambiar de modo
-      _emailController.clear(); // Limpiar campos al cambiar de modo
+      _errorMessage = null;
+      _emailController.clear();
       _passwordController.clear();
       _rolController.clear();
     });
@@ -37,16 +41,18 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // User user; // Declara user fuera de los bloques para que sea accesible
       if (_isLoginMode) {
         // Lógica para INICIAR SESIÓN
         final user = await _apiService.loginUser(
           _emailController.text,
           _passwordController.text,
         );
-
+        
         if (user.email.isNotEmpty) {
           if (!mounted) return;
-          Navigator.of(context).pushReplacementNamed('/home');
+          // Redirigir según el rol del usuario
+          _navigateToDashboard(user.rol); 
         } else {
           setState(() {
             _errorMessage = 'Credenciales incorrectas o usuario no encontrado.';
@@ -54,7 +60,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         // Lógica para REGISTRAR USUARIO
-        // Asegúrate de que el rol se ingrese o se asigne por defecto si es necesario
         if (_rolController.text.isEmpty) {
           setState(() {
             _errorMessage = 'Por favor, introduce un rol para el registro (ej. cliente, establecimiento).';
@@ -65,23 +70,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final user = await _apiService.registerUser(
           _emailController.text,
           _passwordController.text,
-          _rolController.text, // Pasa el rol para el registro
+          _rolController.text,
         );
 
         if (user.email.isNotEmpty) {
           if (!mounted) return;
-          // Después de un registro exitoso, puedes redirigir al home
-          // o al login para que el usuario inicie sesión con sus nuevas credenciales.
-          // Para este ejemplo, redirigimos directamente al home si el registro también devuelve token.
-          Navigator.of(context).pushReplacementNamed('/home');
-          // O si prefieres que vuelva al login para iniciar sesión:
-          // setState(() {
-          //   _isLoginMode = true; // Volver al modo login
-          //   _errorMessage = 'Usuario registrado exitosamente. Por favor, inicia sesión.';
-          //   _emailController.clear();
-          //   _passwordController.clear();
-          //   _rolController.clear();
-          // });
+          // Redirigir según el rol del usuario después del registro
+          _navigateToDashboard(user.rol);
         } else {
           setState(() {
             _errorMessage = 'No se pudo registrar el usuario.';
@@ -97,6 +92,26 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  // Nueva función para manejar la navegación según el rol
+  void _navigateToDashboard(String? rol) {
+    if (!mounted) return;
+    switch (rol) {
+      case 'cliente': // Asegúrate de que los nombres de rol coincidan con tu backend
+        Navigator.of(context).pushReplacementNamed('/clienteDashboard');
+        break;
+      case 'establecimiento': // Asegúrate de que los nombres de rol coincidan
+        Navigator.of(context).pushReplacementNamed('/establecimientoDashboard');
+        break;
+      case 'repartidor': // Si tienes este rol
+        // Navigator.of(context).pushReplacementNamed('/repartidorDashboard');
+        // break;
+      default:
+        // En caso de rol desconocido o nulo, redirige a una pantalla por defecto
+        Navigator.of(context).pushReplacementNamed('/home');
+        break;
     }
   }
 
@@ -144,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 obscureText: true,
               ),
-              if (!_isLoginMode) // Mostrar campo de rol solo en modo registro
+              if (!_isLoginMode)
                 Column(
                   children: [
                     const SizedBox(height: 20),
@@ -169,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _isLoading
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
-                      onPressed: _authenticate, // Llama a la función unificada
+                      onPressed: _authenticate,
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
@@ -183,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
               const SizedBox(height: 20),
               TextButton(
-                onPressed: _toggleMode, // Cambia entre Login y Registro
+                onPressed: _toggleMode,
                 child: Text(
                   _isLoginMode
                       ? '¿No tienes cuenta? Regístrate aquí.'
