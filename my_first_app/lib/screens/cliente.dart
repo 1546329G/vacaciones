@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+// ¡ASEGÚRATE DE QUE LA CLASE SE LLAME ClienteDashboardScreen!
 class ClienteDashboardScreen extends StatelessWidget {
   const ClienteDashboardScreen({super.key});
 

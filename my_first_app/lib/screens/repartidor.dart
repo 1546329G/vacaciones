@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+// ¡ASEGÚRATE DE QUE LA CLASE SE LLAME RepartidorDashboardScreen!
 class RepartidorDashboardScreen extends StatelessWidget {
   const RepartidorDashboardScreen({super.key});
 
