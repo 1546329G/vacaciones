@@ -1,0 +1,34 @@
+# para correr el sitio web con fluter:
+
+ flutter run -d chrome 
+
+
+# para correr el api 
+firebase emulators:start --only functions
+
+
+
+#para levntar mi emulador ya configurado
+
+emulator -avd Pixel6Pro_AVD
+
+C:\Users\GANDY\AppData\Local\Android\Sdk\cmdline-tools\latest\bin>   o    C:\Users\GANDY\AppData\Local\Android\Sdk\emulator>
+
+
+
+
+
+
+# para converitr de apk (aplicacion movil )
+
+ flutter build apk
+
+
+
+
+
+
+
+
+
+
