@@ -15,6 +15,14 @@ emulator -avd Pixel6Pro_AVD
 C:\Users\GANDY\AppData\Local\Android\Sdk\cmdline-tools\latest\bin>   o    C:\Users\GANDY\AppData\Local\Android\Sdk\emulator>
 
 
+##############################################
+para cambaiar la iamegn, se cambia en dos lados 
+#############################################
+C:\fluter-proyect\vacaciones\pideya_gandy\pubspec.yaml
+C:\fluter-proyect\vacaciones\pideya_gandy\assets\icon
+
+
+
 
 
 
@@ -23,6 +31,12 @@ C:\Users\GANDY\AppData\Local\Android\Sdk\cmdline-tools\latest\bin>   o    C:\Use
 
  flutter build apk
 
+
+
+
+#para ver el nombre de el app, podras ver que nombre tiene tu app al ejecutar el comnado para ejecutar a apk
+
+C:\fluter-proyect\vacaciones\pideya_gandy\android\app\src\main\AndroidManifest.xml
 
 
 
